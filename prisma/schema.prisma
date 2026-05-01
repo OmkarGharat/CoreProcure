@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String   @default("Admin")
+  role      String   @default("Admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendor {
+  id           String   @id @default(cuid())
+  name         String
+  gst          String?
+  currency     String   @default("INR")
+  paymentTerms String?
+  addresses    String   @default("[]") // JSON array of addresses
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Product {
+  id                  String   @id @default(cuid())
+  itemCode            String   @unique
+  description         String
+  uom                 String
+  defaultPurchaseAccount String?
+  valuationRate       Float    @default(0)
+  stockQty            Float    @default(0)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Series {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  prefix        String
+  currentNumber Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PurchaseOrder {
+  id         String   @id @default(cuid())
+  poNumber   String   @unique
+  vendorId   String
+  vendorName String
+  status     String   @default("Draft") // Draft, Submitted, Partially Received, Closed
+  items      String   @default("[]") // JSON array of PO items
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model GRN {
+  id         String   @id @default(cuid())
+  grnNumber  String   @unique
+  poId       String
+  vendorId   String
+  vendorName String
+  status     String   @default("Draft") // Draft, Posted
+  items      String   @default("[]") // JSON array of GRN items
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model StockMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  warehouseId   String
+  qty           Float
+  valuationRate Float
+  referenceType String // GRN, Sales, Adjustment
+  referenceId   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
