@@ -1,6 +1,5 @@
-export const dynamic = 'force-dynamic';
-
 'use client';
+
 
 import { useState } from 'react';
 import { useVendors, useCreateVendor, useUpdateVendor } from '@/hooks/useERP';
@@ -17,17 +16,18 @@ import type { Vendor } from '@/types/erp';
 
 export default function VendorsPage() {
   const [search, setSearch] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
   const [editVendor, setEditVendor] = useState<Vendor | null>(null);
-  const [form, setForm] = useState({ name: '', gst: '', city: '', state: '', pincode: '' });
+  const [form, setForm] = useState({ name: '', gst: '', city: '', state: '', pincode: '', isActive: true });
 
-  const { data: vendors, isLoading } = useVendors(search);
+  const { data: vendors, isLoading } = useVendors(search, showInactive);
   const createVendor = useCreateVendor();
   const updateVendor = useUpdateVendor();
 
   const openCreate = () => {
     setEditVendor(null);
-    setForm({ name: '', gst: '', city: '', state: '', pincode: '' });
+    setForm({ name: '', gst: '', city: '', state: '', pincode: '', isActive: true });
     setOpen(true);
   };
 
@@ -39,6 +39,7 @@ export default function VendorsPage() {
       city: vendor.addresses?.[0]?.city || '',
       state: vendor.addresses?.[0]?.state || '',
       pincode: vendor.addresses?.[0]?.pincode || '',
+      isActive: vendor.isActive ?? true,
     });
     setOpen(true);
   };
@@ -46,9 +47,10 @@ export default function VendorsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      name: form.name,
-      gst: form.gst || undefined,
-      addresses: form.city ? [{ type: 'Shipping' as const, line1: '', city: form.city, state: form.state, pincode: form.pincode }] : [],
+      name: form.name.trim(),
+      gst: form.gst.trim() || undefined,
+      addresses: form.city ? [{ type: 'Shipping' as const, line1: '', city: form.city.trim(), state: form.state.trim(), pincode: form.pincode.trim() }] : [],
+      isActive: form.isActive,
     };
 
     if (editVendor) {
@@ -75,6 +77,7 @@ export default function VendorsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-2xl font-bold text-slate-900">Vendors</h1>
           <p className="text-sm text-slate-500">Manage your supplier database</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -91,7 +94,12 @@ export default function VendorsPage() {
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Vendor Name *</Label>
-                <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter vendor name" />
+                <Input 
+                  required 
+                  value={form.name} 
+                  onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                  placeholder="Enter vendor name" 
+                />
               </div>
               <div className="space-y-2">
                 <Label>GST Number</Label>
@@ -111,6 +119,20 @@ export default function VendorsPage() {
                 <Label>Pincode</Label>
                 <Input value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} placeholder="Pincode" />
               </div>
+              
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-semibold">Active Status</Label>
+                  <p className="text-xs text-slate-500">Enable or disable this vendor</p>
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                />
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createVendor.isPending || updateVendor.isPending} className="bg-emerald-600 hover:bg-emerald-700">
@@ -124,16 +146,29 @@ export default function VendorsPage() {
         </Dialog>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder="Search vendors..."
-          className="pl-9 border-slate-200"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search vendors..."
+            className="pl-9 border-slate-200"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <input 
+            id="showInactive"
+            type="checkbox" 
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          <label htmlFor="showInactive" className="cursor-pointer">Show inactive vendors</label>
+        </div>
       </div>
+
 
       {/* Table */}
       <Card className="border-slate-200/80 shadow-sm">

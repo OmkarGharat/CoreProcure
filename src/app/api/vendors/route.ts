@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Vendor from '@/models/Vendor';
 
+const validateName = (name: string) => {
+  if (!name || typeof name !== 'string') return false;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return false;
+  // Check if it contains at least one alphanumeric character
+  return /[a-zA-Z0-9]/.test(trimmed);
+};
+
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
@@ -32,16 +40,19 @@ export async function POST(req: NextRequest) {
     await dbConnect();
     const body = await req.json();
 
-    if (!body.name) {
-      return NextResponse.json({ message: 'Vendor name is required' }, { status: 400 });
+    if (!validateName(body.name)) {
+      return NextResponse.json({ 
+        message: 'Vendor name is required and must contain alphanumeric characters' 
+      }, { status: 400 });
     }
 
     const vendor = await Vendor.create({
-      name: body.name,
-      gst: body.gst || null,
+      name: body.name.trim(),
+      gst: body.gst?.trim() || null,
       currency: body.currency || 'INR',
       paymentTerms: body.paymentTerms || null,
       addresses: JSON.stringify(body.addresses || []),
+      isActive: body.isActive !== undefined ? body.isActive : true,
     });
 
     return NextResponse.json({ ...vendor.toObject(), id: vendor._id, addresses: JSON.parse(vendor.addresses) }, { status: 201 });
@@ -60,17 +71,18 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'Vendor ID is required' }, { status: 400 });
     }
 
-    const vendor = await Vendor.findByIdAndUpdate(
-      id,
-      {
-        name: data.name,
-        gst: data.gst || null,
-        currency: data.currency || 'INR',
-        paymentTerms: data.paymentTerms || null,
-        addresses: JSON.stringify(data.addresses || []),
-      },
-      { new: true }
-    );
+    if (data.name !== undefined && !validateName(data.name)) {
+      return NextResponse.json({ 
+        message: 'Vendor name must contain alphanumeric characters' 
+      }, { status: 400 });
+    }
+
+    const updateData: any = { ...data };
+    if (data.name) updateData.name = data.name.trim();
+    if (data.gst) updateData.gst = data.gst.trim();
+    if (data.addresses) updateData.addresses = JSON.stringify(data.addresses);
+
+    const vendor = await Vendor.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!vendor) {
       return NextResponse.json({ message: 'Vendor not found' }, { status: 404 });
@@ -81,4 +93,5 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
+
 

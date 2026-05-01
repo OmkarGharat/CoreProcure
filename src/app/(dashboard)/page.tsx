@@ -1,6 +1,5 @@
-export const dynamic = 'force-dynamic';
-
 'use client';
+
 
 import { useDashboard } from '@/hooks/useERP';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

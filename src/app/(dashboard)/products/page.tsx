@@ -1,6 +1,5 @@
-export const dynamic = 'force-dynamic';
-
 'use client';
+
 
 import { useState } from 'react';
 import { useProducts, useCreateProduct, useUpdateProduct } from '@/hooks/useERP';
@@ -17,17 +16,18 @@ import type { Product } from '@/types/erp';
 
 export default function ProductsPage() {
   const [search, setSearch] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState({ itemCode: '', description: '', uom: 'Nos', valuationRate: 0 });
+  const [form, setForm] = useState({ itemCode: '', description: '', uom: 'Nos', valuationRate: 0, isActive: true });
 
-  const { data: products, isLoading } = useProducts(search);
+  const { data: products, isLoading } = useProducts(search, showInactive);
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
 
   const openCreate = () => {
     setEditProduct(null);
-    setForm({ itemCode: '', description: '', uom: 'Nos', valuationRate: 0 });
+    setForm({ itemCode: '', description: '', uom: 'Nos', valuationRate: 0, isActive: true });
     setOpen(true);
   };
 
@@ -38,6 +38,7 @@ export default function ProductsPage() {
       description: product.description,
       uom: product.uom,
       valuationRate: product.valuationRate,
+      isActive: product.isActive ?? true,
     });
     setOpen(true);
   };
@@ -45,10 +46,11 @@ export default function ProductsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      itemCode: form.itemCode,
-      description: form.description,
+      itemCode: form.itemCode.trim(),
+      description: form.description.trim(),
       uom: form.uom,
       valuationRate: form.valuationRate,
+      isActive: form.isActive,
     };
 
     if (editProduct) {
@@ -75,6 +77,7 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-2xl font-bold text-slate-900">Products</h1>
           <p className="text-sm text-slate-500">Manage your product catalog and inventory</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -118,6 +121,20 @@ export default function ProductsPage() {
                 <Label>Valuation Rate (₹)</Label>
                 <Input type="number" min={0} step="0.01" value={form.valuationRate} onChange={(e) => setForm({ ...form, valuationRate: Number(e.target.value) })} />
               </div>
+
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-semibold">Active Status</Label>
+                  <p className="text-xs text-slate-500">Enable or disable this product</p>
+                </div>
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  checked={form.isActive}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                />
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createProduct.isPending || updateProduct.isPending} className="bg-emerald-600 hover:bg-emerald-700">
@@ -131,16 +148,29 @@ export default function ProductsPage() {
         </Dialog>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder="Search products..."
-          className="pl-9 border-slate-200"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search products..."
+            className="pl-9 border-slate-200"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <input 
+            id="showInactive"
+            type="checkbox" 
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          <label htmlFor="showInactive" className="cursor-pointer">Show inactive products</label>
+        </div>
       </div>
+
 
       {/* Table */}
       <Card className="border-slate-200/80 shadow-sm">
@@ -154,15 +184,16 @@ export default function ProductsPage() {
                 <TableHead className="font-semibold text-slate-600 text-right">Stock Qty</TableHead>
                 <TableHead className="font-semibold text-slate-600 text-right">Valuation Rate</TableHead>
                 <TableHead className="font-semibold text-slate-600 text-right">Stock Value</TableHead>
+                <TableHead className="font-semibold text-slate-600">Status</TableHead>
                 <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">Loading products...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-400">Loading products...</TableCell></TableRow>
               ) : products?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={8} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2">
                       <Package className="w-10 h-10 text-slate-300" />
                       <p className="text-slate-400 font-medium">No products found</p>
@@ -190,7 +221,13 @@ export default function ProductsPage() {
                     <TableCell className="text-right font-medium text-slate-700">
                       ₹{(p.stockQty * p.valuationRate).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </TableCell>
+                    <TableCell>
+                      <Badge className={`${p.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'} border-0 text-xs`}>
+                        {p.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
+
                       <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" onClick={() => openEdit(p)}>
                         <Pencil className="w-3.5 h-3.5 text-slate-400" />
                       </Button>

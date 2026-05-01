@@ -5,15 +5,16 @@ import { api } from '@/lib/api-client';
 import type { Vendor, Product, PurchaseOrder, GRN, DashboardData } from '@/types/erp';
 
 // Vendors
-export function useVendors(search: string = '') {
+export function useVendors(search: string = '', showInactive: boolean = false) {
   return useQuery<Vendor[]>({
-    queryKey: ['vendors', search],
+    queryKey: ['vendors', search, showInactive],
     queryFn: async () => {
-      const { data } = await api.get(`/vendors?search=${search}`);
+      const { data } = await api.get(`/vendors?search=${search}&showInactive=${showInactive}`);
       return data;
     },
   });
 }
+
 
 export function useCreateVendor() {
   const qc = useQueryClient();
@@ -32,15 +33,16 @@ export function useUpdateVendor() {
 }
 
 // Products
-export function useProducts(search: string = '') {
+export function useProducts(search: string = '', showInactive: boolean = false) {
   return useQuery<Product[]>({
-    queryKey: ['products', search],
+    queryKey: ['products', search, showInactive],
     queryFn: async () => {
-      const { data } = await api.get(`/products?search=${search}`);
+      const { data } = await api.get(`/products?search=${search}&showInactive=${showInactive}`);
       return data;
     },
   });
 }
+
 
 export function useCreateProduct() {
   const qc = useQueryClient();
