@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Vendor from '@/models/Vendor';
 import Series from '@/models/Series';
+import { handleApiError } from '@/lib/error-handler';
+
 
 const validateName = (name: string) => {
   if (!name || typeof name !== 'string') return false;
@@ -24,17 +26,33 @@ export async function GET(req: NextRequest) {
 
     const vendors = await Vendor.find(query).sort({ createdAt: -1 });
 
-    const enriched = vendors.map((v) => ({
-      ...v.toObject(),
-      id: v._id,
-      addresses: JSON.parse(v.addresses),
+    // Handle backfilling missing vendor codes
+    const enriched = await Promise.all(vendors.map(async (v) => {
+      const obj = v.toObject();
+      if (!obj.vendorCode) {
+        let series = await Series.findOne({ name: 'VendorCode' });
+        if (!series) {
+          series = await Series.create({ name: 'VendorCode', prefix: '', currentNumber: 10000 });
+        }
+        const nextNum = series.currentNumber + 1;
+        const newCode = `${series.prefix}${nextNum}`;
+        await Series.findByIdAndUpdate(series._id, { currentNumber: nextNum });
+        await Vendor.findByIdAndUpdate(v._id, { vendorCode: newCode });
+        obj.vendorCode = newCode;
+      }
+      return {
+        ...obj,
+        id: v._id,
+        addresses: JSON.parse(v.addresses),
+      };
     }));
 
     return NextResponse.json(enriched);
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return handleApiError(error);
   }
 }
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,12 +89,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...vendor.toObject(), id: vendor._id, addresses: JSON.parse(vendor.addresses) }, { status: 201 });
   } catch (error: any) {
-    if (error.code === 11000) {
-      return NextResponse.json({ message: 'Vendor Code already exists' }, { status: 400 });
-    }
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return handleApiError(error);
   }
 }
+
 
 export async function PUT(req: NextRequest) {
   try {
@@ -108,12 +124,10 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ ...vendor.toObject(), id: vendor._id, addresses: JSON.parse(vendor.addresses) });
   } catch (error: any) {
-    if (error.code === 11000) {
-      return NextResponse.json({ message: 'Vendor Code already exists' }, { status: 400 });
-    }
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return handleApiError(error);
   }
 }
+
 
 
 

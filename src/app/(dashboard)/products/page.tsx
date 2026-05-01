@@ -19,7 +19,8 @@ export default function ProductsPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState({ itemCode: '', description: '', uom: 'Nos', valuationRate: 0, isActive: true });
+  const [form, setForm] = useState({ productNumber: '', productCode: '', description: '', uom: 'Nos', valuationRate: 0, isActive: true });
+
 
   const { data: products, isLoading } = useProducts(search, showInactive);
   const createProduct = useCreateProduct();
@@ -27,14 +28,15 @@ export default function ProductsPage() {
 
   const openCreate = () => {
     setEditProduct(null);
-    setForm({ itemCode: '', description: '', uom: 'Nos', valuationRate: 0, isActive: true });
+    setForm({ productNumber: '', productCode: '', description: '', uom: 'Nos', valuationRate: 0, isActive: true });
     setOpen(true);
   };
 
   const openEdit = (product: Product) => {
     setEditProduct(product);
     setForm({
-      itemCode: product.itemCode,
+      productNumber: product.productNumber || '',
+      productCode: product.productCode || (product as any).itemCode || '',
       description: product.description,
       uom: product.uom,
       valuationRate: product.valuationRate,
@@ -46,8 +48,9 @@ export default function ProductsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      itemCode: form.itemCode.trim(),
-      description: form.description.trim(),
+      productNumber: (form.productNumber || '').trim() || undefined,
+      productCode: (form.productCode || '').trim(),
+      description: (form.description || '').trim(),
       uom: form.uom,
       valuationRate: form.valuationRate,
       isActive: form.isActive,
@@ -98,9 +101,24 @@ export default function ProductsPage() {
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Item Code *</Label>
-                  <Input required value={form.itemCode} onChange={(e) => setForm({ ...form, itemCode: e.target.value })} placeholder="e.g. ITEM-001" disabled={!!editProduct} />
+                  <Label>Product Number</Label>
+                  <Input 
+                    value={form.productNumber} 
+                    onChange={(e) => setForm({ ...form, productNumber: e.target.value })} 
+                    placeholder="Auto-generated" 
+                  />
                 </div>
+                <div className="space-y-2">
+                  <Label>Product Code *</Label>
+                  <Input 
+                    required 
+                    value={form.productCode} 
+                    onChange={(e) => setForm({ ...form, productCode: e.target.value })} 
+                    placeholder="e.g. ITEM-001" 
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>UOM *</Label>
                   <select
@@ -116,14 +134,14 @@ export default function ProductsPage() {
                     <option value="Box">Box</option>
                   </select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Valuation Rate (₹)</Label>
+                  <Input type="number" min={0} step="0.01" value={form.valuationRate} onChange={(e) => setForm({ ...form, valuationRate: Number(e.target.value) })} />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Description *</Label>
                 <Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Product description" />
-              </div>
-              <div className="space-y-2">
-                <Label>Valuation Rate (₹)</Label>
-                <Input type="number" min={0} step="0.01" value={form.valuationRate} onChange={(e) => setForm({ ...form, valuationRate: Number(e.target.value) })} />
               </div>
 
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
@@ -182,22 +200,19 @@ export default function ProductsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-100">
-                <TableHead className="font-semibold text-slate-600">Item Code</TableHead>
-                <TableHead className="font-semibold text-slate-600">Description</TableHead>
+                <TableHead className="font-semibold text-slate-600">Number</TableHead>
+                <TableHead className="font-semibold text-slate-600">Product Code</TableHead>
                 <TableHead className="font-semibold text-slate-600">UOM</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Stock Qty</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Valuation Rate</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Stock Value</TableHead>
                 <TableHead className="font-semibold text-slate-600">Status</TableHead>
                 <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-400">Loading products...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-12 text-slate-400">Loading products...</TableCell></TableRow>
               ) : products?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12">
+                  <TableCell colSpan={5} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2">
                       <Package className="w-10 h-10 text-slate-300" />
                       <p className="text-slate-400 font-medium">No products found</p>
@@ -208,22 +223,12 @@ export default function ProductsPage() {
               ) : (
                 products?.map((p) => (
                   <TableRow key={p.id} className="hover:bg-slate-50/50 cursor-pointer group">
+                    <TableCell className="font-mono text-xs font-bold text-emerald-600">{p.productNumber}</TableCell>
                     <TableCell>
-                      <span className="font-mono font-medium text-emerald-600">{p.itemCode}</span>
+                      <span className="font-mono font-medium text-slate-900">{p.productCode || (p as any).itemCode}</span>
                     </TableCell>
-                    <TableCell className="font-medium text-slate-900">{p.description}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs font-medium">{p.uom}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{p.stockQty}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <IndianRupee className="w-3 h-3 text-slate-400" />
-                        {p.valuationRate.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-slate-700">
-                      ₹{(p.stockQty * p.valuationRate).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </TableCell>
                     <TableCell>
                       <Badge className={`${p.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'} border-0 text-xs`}>
@@ -231,7 +236,6 @@ export default function ProductsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-
                       <Button variant="ghost" size="icon" className="transition-opacity h-8 w-8" onClick={() => openEdit(p)}>
                         <Pencil className="w-3.5 h-3.5 text-slate-400" />
                       </Button>
@@ -246,3 +250,4 @@ export default function ProductsPage() {
     </div>
   );
 }
+

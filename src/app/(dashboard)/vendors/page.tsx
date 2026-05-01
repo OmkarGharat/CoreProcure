@@ -35,12 +35,13 @@ export default function VendorsPage() {
     setEditVendor(vendor);
     setForm({
       name: vendor.name,
-      vendorCode: vendor.vendorCode,
+      vendorCode: vendor.vendorCode || '',
       gst: vendor.gst || '',
       city: vendor.addresses?.[0]?.city || '',
       state: vendor.addresses?.[0]?.state || '',
       pincode: vendor.addresses?.[0]?.pincode || '',
       isActive: vendor.isActive ?? true,
+
     });
     setOpen(true);
   };
@@ -48,12 +49,13 @@ export default function VendorsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      name: form.name.trim(),
-      vendorCode: form.vendorCode.trim() || undefined,
-      gst: form.gst.trim() || undefined,
-      addresses: form.city ? [{ type: 'Shipping' as const, line1: '', city: form.city.trim(), state: form.state.trim(), pincode: form.pincode.trim() }] : [],
+      name: (form.name || '').trim(),
+      vendorCode: (form.vendorCode || '').trim() || undefined,
+      gst: (form.gst || '').trim() || undefined,
+      addresses: form.city ? [{ type: 'Shipping' as const, line1: '', city: (form.city || '').trim(), state: (form.state || '').trim(), pincode: (form.pincode || '').trim() }] : [],
       isActive: form.isActive,
     };
+
 
     if (editVendor) {
       updateVendor.mutate({ id: editVendor.id, ...payload }, {

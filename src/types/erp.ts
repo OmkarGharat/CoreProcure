@@ -22,7 +22,8 @@ export interface Vendor {
 
 export interface Product {
   id: string;
-  itemCode: string;
+  productNumber: string;
+  productCode: string;
   description: string;
   uom: string;
   defaultPurchaseAccount?: string;
@@ -32,6 +33,7 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
 }
+
 
 export interface POItem {
   _id?: string;
@@ -87,6 +89,64 @@ export interface GRN {
   updatedAt: string;
 }
 
+export interface IQIItem {
+  productId: string;
+  productName: string;
+  receivedQty: number;
+  inspectedQty: number;
+  acceptedQty: number;
+  rejectedQty: number;
+  remarks?: string;
+}
+
+export interface QualityInspection {
+  id: string;
+  qiNumber: string;
+  grnId: string;
+  grnNumber: string;
+  vendorId: string;
+  vendorName: string;
+  status: 'Draft' | 'Submitted';
+  items: IQIItem[];
+  inspectedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorInvoice {
+  id: string;
+  invoiceNumber: string;
+  externalInvoiceNumber: string;
+  grnId?: string;
+  qiId?: string;
+  vendorId: string;
+  vendorName: string;
+  status: 'Draft' | 'Submitted' | 'Partially Paid' | 'Paid';
+  totalAmount: number;
+  taxAmount: number;
+  grandTotal: number;
+  balanceAmount: number;
+  dueDate?: string;
+  items: any[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorPayment {
+  id: string;
+  paymentNumber: string;
+  vendorId: string;
+  vendorName: string;
+  invoiceId: string;
+  amountPaid: number;
+  paymentDate: string;
+  paymentMode: 'Cash' | 'Bank Transfer' | 'Cheque';
+  referenceNumber?: string;
+  remarks?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DashboardData {
   stats: {
     totalVendors: number;
@@ -101,3 +161,4 @@ export interface DashboardData {
   recentPOs: (PurchaseOrder & { total: number })[];
   recentGRNs: GRN[];
 }
+

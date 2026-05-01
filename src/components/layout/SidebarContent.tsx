@@ -13,7 +13,11 @@ import {
   LogOut,
   FileText,
   Boxes,
+  ClipboardCheck,
+  Receipt,
+  CreditCard,
 } from 'lucide-react';
+
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const navSections = [
@@ -28,8 +32,12 @@ const navSections = [
     items: [
       { label: 'Purchase Orders', path: '/purchase-orders', icon: FileText },
       { label: 'Goods Receipts', path: '/grn', icon: Boxes },
+      { label: 'Quality Inspections', path: '/qi', icon: ClipboardCheck },
+      { label: 'Vendor Invoices', path: '/invoices', icon: Receipt },
+      { label: 'Payments', path: '/payments', icon: CreditCard },
     ],
   },
+
   {
     label: 'Master Data',
     items: [
