@@ -6,13 +6,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   Dialog,
@@ -29,11 +29,11 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Plus, 
-  Search, 
-  Pencil, 
-  Package, 
+import {
+  Plus,
+  Search,
+  Pencil,
+  Package,
   Loader2,
   Info,
   ShoppingCart,
@@ -52,7 +52,7 @@ const INITIAL_FORM = {
   description: '',
   category: '',
   isActive: true,
-  
+
   // Purchase
   purchaseUom: 'Nos',
   purchaseRate: 0,
@@ -66,7 +66,8 @@ const INITIAL_FORM = {
   inventoryFlag: true,
   reorderLevel: 0,
   qcRequired: false,
-  lotSerialTracking: 'None' as const,
+  lotSerialTracking: 'None' as 'None' | 'Lot' | 'Serial',
+
 
   // Accounting
   inventoryAccount: '',
@@ -86,6 +87,7 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [originalForm, setOriginalForm] = useState(INITIAL_FORM);
 
   const { data: products, isLoading } = useProducts(search, showInactive);
   const createProduct = useCreateProduct();
@@ -94,12 +96,12 @@ export default function ProductsPage() {
   const openCreate = () => {
     setEditProduct(null);
     setForm(INITIAL_FORM);
+    setOriginalForm(INITIAL_FORM);
     setOpen(true);
   };
 
   const openEdit = (product: Product) => {
-    setEditProduct(product);
-    setForm({
+    const editData = {
       productNumber: product.productNumber || '',
       productCode: product.productCode || (product as any).itemCode || '',
       description: product.description,
@@ -123,12 +125,25 @@ export default function ProductsPage() {
       brand: product.brand || '',
       alternates: product.alternates || '',
       attachments: product.attachments || '',
-    });
+    };
+    setEditProduct(product);
+    setForm(editData);
+    setOriginalForm(editData);
     setOpen(true);
+  };
+
+  const hasChanges = () => {
+    if (!editProduct) return true; // Always allow for new products
+    return JSON.stringify(form) !== JSON.stringify(originalForm);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (editProduct && !hasChanges()) {
+      setOpen(false);
+      return;
+    }
+
     const payload = {
       ...form,
       productNumber: (form.productNumber || '').trim() || undefined,
@@ -169,8 +184,8 @@ export default function ProductsPage() {
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent 
-            className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+          <DialogContent
+            className="sm:max-w-2xl"
             onInteractOutside={(e) => e.preventDefault()}
             onEscapeKeyDown={(e) => e.preventDefault()}
           >
@@ -180,7 +195,7 @@ export default function ProductsPage() {
                 {editProduct ? 'Edit Product' : 'Create New Product'}
               </DialogTitle>
             </DialogHeader>
-            
+
             <form onSubmit={handleSubmit} className="space-y-6 py-4">
               <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-5 mb-4">
@@ -206,142 +221,150 @@ export default function ProductsPage() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="general" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Product Number</Label>
-                      <Input value={form.productNumber} onChange={(e) => setForm({ ...form, productNumber: e.target.value })} placeholder="Auto-generated" readOnly={!!editProduct} className="bg-slate-50 font-mono" />
+                <div className="min-h-[380px]">
+                  <TabsContent value="general" className="space-y-4 mt-0">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Product Number</Label>
+                        <Input value={form.productNumber} onChange={(e) => setForm({ ...form, productNumber: e.target.value })} placeholder="Auto-generated" readOnly={!!editProduct} className="bg-slate-50 font-mono" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Product Code *</Label>
+                        <Input required value={form.productCode} onChange={(e) => setForm({ ...form, productCode: e.target.value })} placeholder="e.g. ITEM-001" />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Product Code *</Label>
-                      <Input required value={form.productCode} onChange={(e) => setForm({ ...form, productCode: e.target.value })} placeholder="e.g. ITEM-001" />
+                      <Label>Description *</Label>
+                      <Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Product description" />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description *</Label>
-                    <Input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Product description" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Category</Label>
-                      <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Raw Material" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Category</Label>
+                        <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g. Raw Material" />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 self-end h-[42px]">
+                        <Label className="text-sm font-semibold">Active Status</Label>
+                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-emerald-600" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 self-end h-[42px]">
-                      <Label className="text-sm font-semibold">Active Status</Label>
-                      <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-emerald-600" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                    </div>
-                  </div>
-                </TabsContent>
+                  </TabsContent>
 
-                <TabsContent value="purchase" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Purchase UOM</Label>
-                      <Input value={form.purchaseUom} onChange={(e) => setForm({ ...form, purchaseUom: e.target.value })} placeholder="e.g. Box" />
+                  <TabsContent value="purchase" className="space-y-4 mt-0">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Purchase UOM</Label>
+                        <Input value={form.purchaseUom} onChange={(e) => setForm({ ...form, purchaseUom: e.target.value })} placeholder="e.g. Box" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Purchase Rate (₹)</Label>
+                        <Input type="number" value={form.purchaseRate} onChange={(e) => setForm({ ...form, purchaseRate: Number(e.target.value) })} />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Purchase Rate (₹)</Label>
-                      <Input type="number" value={form.purchaseRate} onChange={(e) => setForm({ ...form, purchaseRate: Number(e.target.value) })} />
+                      <Label>Preferred Vendor</Label>
+                      <Input value={form.preferredVendor} onChange={(e) => setForm({ ...form, preferredVendor: e.target.value })} placeholder="Vendor name" />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Preferred Vendor</Label>
-                    <Input value={form.preferredVendor} onChange={(e) => setForm({ ...form, preferredVendor: e.target.value })} placeholder="Vendor name" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Lead Time (Days)</Label>
-                      <Input type="number" value={form.leadTime} onChange={(e) => setForm({ ...form, leadTime: Number(e.target.value) })} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Lead Time (Days)</Label>
+                        <Input type="number" value={form.leadTime} onChange={(e) => setForm({ ...form, leadTime: Number(e.target.value) })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tax Code</Label>
+                        <Input value={form.taxCode} onChange={(e) => setForm({ ...form, taxCode: e.target.value })} placeholder="GST-18" />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Tax Code</Label>
-                      <Input value={form.taxCode} onChange={(e) => setForm({ ...form, taxCode: e.target.value })} placeholder="GST-18" />
-                    </div>
-                  </div>
-                </TabsContent>
+                  </TabsContent>
 
-                <TabsContent value="inventory" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Stock UOM *</Label>
-                      <Input required value={form.stockUom} onChange={(e) => setForm({ ...form, stockUom: e.target.value })} placeholder="e.g. Nos" />
+                  <TabsContent value="inventory" className="space-y-4 mt-0">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Stock UOM *</Label>
+                        <Input required value={form.stockUom} onChange={(e) => setForm({ ...form, stockUom: e.target.value })} placeholder="e.g. Nos" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Valuation Rate (₹)</Label>
+                        <Input type="number" value={form.valuationRate} onChange={(e) => setForm({ ...form, valuationRate: Number(e.target.value) })} />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Valuation Rate (₹)</Label>
-                      <Input type="number" value={form.valuationRate} onChange={(e) => setForm({ ...form, valuationRate: Number(e.target.value) })} />
+                    <div className="grid grid-cols-2 gap-4 border p-3 rounded-lg bg-emerald-50/30 border-emerald-100">
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" id="invFlag" checked={form.inventoryFlag} onChange={(e) => setForm({ ...form, inventoryFlag: e.target.checked })} />
+                        <Label htmlFor="invFlag" className="cursor-pointer">Maintain Inventory</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" id="qcReq" checked={form.qcRequired} onChange={(e) => setForm({ ...form, qcRequired: e.target.checked })} />
+                        <Label htmlFor="qcReq" className="cursor-pointer">QC Required</Label>
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 border p-3 rounded-lg bg-emerald-50/30 border-emerald-100">
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="invFlag" checked={form.inventoryFlag} onChange={(e) => setForm({ ...form, inventoryFlag: e.target.checked })} />
-                      <Label htmlFor="invFlag" className="cursor-pointer">Maintain Inventory</Label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Reorder Level</Label>
+                        <Input type="number" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: Number(e.target.value) })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Lot/Serial Tracking</Label>
+                        <select className="w-full h-9 rounded-md border px-3 text-sm" value={form.lotSerialTracking} onChange={(e) => setForm({ ...form, lotSerialTracking: e.target.value as any })}>
+                          <option value="None">None</option>
+                          <option value="Lot">Lot Tracking</option>
+                          <option value="Serial">Serial Tracking</option>
+                        </select>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" id="qcReq" checked={form.qcRequired} onChange={(e) => setForm({ ...form, qcRequired: e.target.checked })} />
-                      <Label htmlFor="qcReq" className="cursor-pointer">QC Required</Label>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Reorder Level</Label>
-                      <Input type="number" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: Number(e.target.value) })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Lot/Serial Tracking</Label>
-                      <select className="w-full h-9 rounded-md border px-3 text-sm" value={form.lotSerialTracking} onChange={(e) => setForm({ ...form, lotSerialTracking: e.target.value as any })}>
-                        <option value="None">None</option>
-                        <option value="Lot">Lot Tracking</option>
-                        <option value="Serial">Serial Tracking</option>
-                      </select>
-                    </div>
-                  </div>
-                </TabsContent>
+                  </TabsContent>
 
-                <TabsContent value="accounting" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Inventory Account</Label>
-                    <Input value={form.inventoryAccount} onChange={(e) => setForm({ ...form, inventoryAccount: e.target.value })} placeholder="Inventory Assets" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Expense / COGS Account</Label>
-                    <Input value={form.expenseAccount} onChange={(e) => setForm({ ...form, expenseAccount: e.target.value })} placeholder="Cost of Goods Sold" />
-                  </div>
-                </TabsContent>
+                  <TabsContent value="accounting" className="space-y-4 mt-0">
+                    <div className="space-y-2">
+                      <Label>Inventory Account</Label>
+                      <Input value={form.inventoryAccount} onChange={(e) => setForm({ ...form, inventoryAccount: e.target.value })} placeholder="Inventory Assets" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Expense / COGS Account</Label>
+                      <Input value={form.expenseAccount} onChange={(e) => setForm({ ...form, expenseAccount: e.target.value })} placeholder="Cost of Goods Sold" />
+                    </div>
+                  </TabsContent>
 
-                <TabsContent value="advanced" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Brand</Label>
-                      <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+                  <TabsContent value="advanced" className="space-y-4 mt-0">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Brand</Label>
+                        <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Weight</Label>
+                        <Input value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Weight</Label>
-                      <Input value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
+                      <Label>Dimensions</Label>
+                      <Input value={form.dimensions} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L x W x H" />
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Dimensions</Label>
-                    <Input value={form.dimensions} onChange={(e) => setForm({ ...form, dimensions: e.target.value })} placeholder="L x W x H" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Alternates</Label>
-                    <textarea className="w-full rounded-md border p-2 text-sm" rows={2} value={form.alternates} onChange={(e) => setForm({ ...form, alternates: e.target.value })} />
-                  </div>
-                </TabsContent>
+                    <div className="space-y-2">
+                      <Label>Alternates</Label>
+                      <textarea className="w-full rounded-md border p-2 text-sm" rows={2} value={form.alternates} onChange={(e) => setForm({ ...form, alternates: e.target.value })} />
+                    </div>
+                  </TabsContent>
+                </div>
               </Tabs>
 
               <DialogFooter className="pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={createProduct.isPending || updateProduct.isPending} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button
+                  type="submit"
+                  disabled={createProduct.isPending || updateProduct.isPending || !!(editProduct && !hasChanges())}
+
+                  className={`${editProduct && !hasChanges() ? 'bg-slate-100 text-slate-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                >
                   {(createProduct.isPending || updateProduct.isPending) ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
-                  ) : editProduct ? 'Update Product' : 'Create Product'}
+                  ) : editProduct ? (hasChanges() ? 'Update Product' : 'No Changes') : 'Create Product'}
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
+
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative max-w-sm flex-1">
@@ -354,9 +377,9 @@ export default function ProductsPage() {
           />
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-600">
-          <input 
+          <input
             id="showInactive"
-            type="checkbox" 
+            type="checkbox"
             className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
