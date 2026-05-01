@@ -28,12 +28,14 @@ export async function GET(req: NextRequest) {
         { itemCode: { $regex: search, $options: 'i' } }, // Backward compatibility
         { productNumber: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } },
       ];
     }
 
     const products = await Product.find(query).sort({ createdAt: -1 });
 
-    // Backfill missing product numbers and product codes
+    // Backfill missing product numbers, codes, and migrate legacy UOM
     const enriched = await Promise.all(products.map(async (p) => {
       const obj = p.toObject() as any;
       let needsUpdate = false;
@@ -58,6 +60,13 @@ export async function GET(req: NextRequest) {
         needsUpdate = true;
       }
 
+      // Legacy UOM migration
+      if (!obj.stockUom && obj.uom) {
+        updateData.stockUom = obj.uom;
+        obj.stockUom = obj.uom;
+        needsUpdate = true;
+      }
+
       if (needsUpdate) {
         await Product.findByIdAndUpdate(p._id, updateData);
       }
@@ -71,8 +80,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
-
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
@@ -80,9 +87,9 @@ export async function POST(req: NextRequest) {
 
     const pCode = body.productCode || body.itemCode;
 
-    if (!validateField(pCode) || !validateField(body.description) || !body.uom) {
+    if (!validateField(pCode) || !validateField(body.description) || !body.stockUom) {
       return NextResponse.json({ 
-        message: 'Product code, description, and UOM are required and must contain alphanumeric characters' 
+        message: 'Product code, description, and Stock UOM are required' 
       }, { status: 400 });
     }
 
@@ -106,14 +113,10 @@ export async function POST(req: NextRequest) {
     }
 
     const product = await Product.create({
+      ...body,
       productNumber,
       productCode: pCode.trim(),
       description: body.description.trim(),
-      uom: body.uom,
-      defaultPurchaseAccount: body.defaultPurchaseAccount || null,
-      valuationRate: body.valuationRate || 0,
-      stockQty: body.stockQty || 0,
-      isActive: body.isActive !== undefined ? body.isActive : true,
     });
 
     return NextResponse.json({ ...product.toObject(), id: product._id }, { status: 201 });
@@ -121,7 +124,6 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
-
 
 export async function PUT(req: NextRequest) {
   try {
@@ -160,6 +162,7 @@ export async function PUT(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
 
 
 

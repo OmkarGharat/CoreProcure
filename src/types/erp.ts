@@ -25,14 +25,40 @@ export interface Product {
   productNumber: string;
   productCode: string;
   description: string;
-  uom: string;
-  defaultPurchaseAccount?: string;
-  valuationRate: number;
-  stockQty: number;
+  category?: string;
   isActive: boolean;
+  
+  // Purchase
+  purchaseUom?: string;
+  purchaseRate: number;
+  preferredVendor?: string;
+  leadTime?: number;
+  taxCode?: string;
+
+  // Inventory
+  stockUom: string;
+  valuationRate: number;
+  inventoryFlag: boolean;
+  reorderLevel: number;
+  qcRequired: boolean;
+  lotSerialTracking: 'None' | 'Lot' | 'Serial';
+  stockQty: number;
+
+  // Accounting
+  inventoryAccount?: string;
+  expenseAccount?: string;
+
+  // Advanced
+  dimensions?: string;
+  weight?: string;
+  brand?: string;
+  alternates?: string;
+  attachments?: string;
+
   createdAt: string;
   updatedAt: string;
 }
+
 
 
 export interface POItem {
