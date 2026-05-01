@@ -19,7 +19,7 @@ export default function VendorsPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
   const [editVendor, setEditVendor] = useState<Vendor | null>(null);
-  const [form, setForm] = useState({ name: '', gst: '', city: '', state: '', pincode: '', isActive: true });
+  const [form, setForm] = useState({ name: '', vendorCode: '', gst: '', city: '', state: '', pincode: '', isActive: true });
 
   const { data: vendors, isLoading } = useVendors(search, showInactive);
   const createVendor = useCreateVendor();
@@ -27,7 +27,7 @@ export default function VendorsPage() {
 
   const openCreate = () => {
     setEditVendor(null);
-    setForm({ name: '', gst: '', city: '', state: '', pincode: '', isActive: true });
+    setForm({ name: '', vendorCode: '', gst: '', city: '', state: '', pincode: '', isActive: true });
     setOpen(true);
   };
 
@@ -35,6 +35,7 @@ export default function VendorsPage() {
     setEditVendor(vendor);
     setForm({
       name: vendor.name,
+      vendorCode: vendor.vendorCode,
       gst: vendor.gst || '',
       city: vendor.addresses?.[0]?.city || '',
       state: vendor.addresses?.[0]?.state || '',
@@ -48,6 +49,7 @@ export default function VendorsPage() {
     e.preventDefault();
     const payload = {
       name: form.name.trim(),
+      vendorCode: form.vendorCode.trim() || undefined,
       gst: form.gst.trim() || undefined,
       addresses: form.city ? [{ type: 'Shipping' as const, line1: '', city: form.city.trim(), state: form.state.trim(), pincode: form.pincode.trim() }] : [],
       isActive: form.isActive,
@@ -87,19 +89,33 @@ export default function VendorsPage() {
               Add Vendor
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent 
+            className="sm:max-w-md" 
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>{editVendor ? 'Edit Vendor' : 'Create New Vendor'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Vendor Name *</Label>
-                <Input 
-                  required 
-                  value={form.name} 
-                  onChange={(e) => setForm({ ...form, name: e.target.value })} 
-                  placeholder="Enter vendor name" 
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Vendor Name *</Label>
+                  <Input 
+                    required 
+                    value={form.name} 
+                    onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                    placeholder="Enter vendor name" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Vendor Code</Label>
+                  <Input 
+                    value={form.vendorCode} 
+                    onChange={(e) => setForm({ ...form, vendorCode: e.target.value })} 
+                    placeholder="Auto-generated" 
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>GST Number</Label>
@@ -176,6 +192,7 @@ export default function VendorsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-100">
+                <TableHead className="font-semibold text-slate-600">Code</TableHead>
                 <TableHead className="font-semibold text-slate-600">Vendor</TableHead>
                 <TableHead className="font-semibold text-slate-600">GST Number</TableHead>
                 <TableHead className="font-semibold text-slate-600">Location</TableHead>
@@ -185,10 +202,10 @@ export default function VendorsPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-12 text-slate-400">Loading vendors...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">Loading vendors...</TableCell></TableRow>
               ) : vendors?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12">
+                  <TableCell colSpan={6} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2">
                       <Building2 className="w-10 h-10 text-slate-300" />
                       <p className="text-slate-400 font-medium">No vendors found</p>
@@ -199,6 +216,7 @@ export default function VendorsPage() {
               ) : (
                 vendors?.map((v) => (
                   <TableRow key={v.id} className="hover:bg-slate-50/50 cursor-pointer group">
+                    <TableCell className="font-mono text-xs font-bold text-emerald-600">{v.vendorCode}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
@@ -225,7 +243,7 @@ export default function VendorsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" onClick={() => openEdit(v)}>
+                      <Button variant="ghost" size="icon" className="transition-opacity h-8 w-8" onClick={() => openEdit(v)}>
                         <Pencil className="w-3.5 h-3.5 text-slate-400" />
                       </Button>
                     </TableCell>
@@ -239,3 +257,4 @@ export default function VendorsPage() {
     </div>
   );
 }
+

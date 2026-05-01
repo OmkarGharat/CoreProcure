@@ -87,7 +87,11 @@ export default function ProductsPage() {
               Add Product
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent 
+            className="sm:max-w-md"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>{editProduct ? 'Edit Product' : 'Create New Product'}</DialogTitle>
             </DialogHeader>
@@ -228,7 +232,7 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell className="text-right">
 
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" onClick={() => openEdit(p)}>
+                      <Button variant="ghost" size="icon" className="transition-opacity h-8 w-8" onClick={() => openEdit(p)}>
                         <Pencil className="w-3.5 h-3.5 text-slate-400" />
                       </Button>
                     </TableCell>

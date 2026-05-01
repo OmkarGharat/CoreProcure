@@ -9,6 +9,8 @@ export interface VendorAddress {
 export interface Vendor {
   id: string;
   name: string;
+  vendorCode: string;
+
   gst?: string;
   currency: string;
   paymentTerms?: string;

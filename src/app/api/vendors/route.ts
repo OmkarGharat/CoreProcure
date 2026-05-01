@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongoose';
 import Vendor from '@/models/Vendor';
+import Series from '@/models/Series';
 
 const validateName = (name: string) => {
   if (!name || typeof name !== 'string') return false;
@@ -46,8 +47,21 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Handle Vendor Code generation
+    let vendorCode = body.vendorCode;
+    if (!vendorCode) {
+      let series = await Series.findOne({ name: 'VendorCode' });
+      if (!series) {
+        series = await Series.create({ name: 'VendorCode', prefix: '', currentNumber: 10000 });
+      }
+      const nextNum = series.currentNumber + 1;
+      vendorCode = `${series.prefix}${nextNum}`;
+      await Series.findByIdAndUpdate(series._id, { currentNumber: nextNum });
+    }
+
     const vendor = await Vendor.create({
       name: body.name.trim(),
+      vendorCode: vendorCode.toString().trim(),
       gst: body.gst?.trim() || null,
       currency: body.currency || 'INR',
       paymentTerms: body.paymentTerms || null,
@@ -57,6 +71,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...vendor.toObject(), id: vendor._id, addresses: JSON.parse(vendor.addresses) }, { status: 201 });
   } catch (error: any) {
+    if (error.code === 11000) {
+      return NextResponse.json({ message: 'Vendor Code already exists' }, { status: 400 });
+    }
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
@@ -79,6 +96,7 @@ export async function PUT(req: NextRequest) {
 
     const updateData: any = { ...data };
     if (data.name) updateData.name = data.name.trim();
+    if (data.vendorCode) updateData.vendorCode = data.vendorCode.toString().trim();
     if (data.gst) updateData.gst = data.gst.trim();
     if (data.addresses) updateData.addresses = JSON.stringify(data.addresses);
 
@@ -90,8 +108,12 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ ...vendor.toObject(), id: vendor._id, addresses: JSON.parse(vendor.addresses) });
   } catch (error: any) {
+    if (error.code === 11000) {
+      return NextResponse.json({ message: 'Vendor Code already exists' }, { status: 400 });
+    }
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
+
 
 

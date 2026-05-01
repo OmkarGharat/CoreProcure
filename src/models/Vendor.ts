@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IVendor extends Document {
   name: string;
+  vendorCode: string;
   gst?: string;
   currency: string;
   paymentTerms?: string;
@@ -13,12 +14,14 @@ export interface IVendor extends Document {
 
 const VendorSchema: Schema = new Schema({
   name: { type: String, required: true },
+  vendorCode: { type: String, required: true, unique: true },
   gst: { type: String },
   currency: { type: String, default: 'INR' },
   paymentTerms: { type: String },
   addresses: { type: String, default: '[]' },
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
+
 
 const Vendor: Model<IVendor> = mongoose.models.Vendor || mongoose.model<IVendor>('Vendor', VendorSchema);
 
