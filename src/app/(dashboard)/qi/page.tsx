@@ -25,8 +25,8 @@ export default function QualityInspectionPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Quality Inspections</h1>
-          <p className="text-sm text-slate-500">Inspect and approve received goods</p>
+          <h1 className="text-2xl font-bold text-slate-900 font-display">Quality Inspections</h1>
+          <p className="text-sm text-slate-500">Record and manage inspection results for received items</p>
         </div>
         <Link href="/qi/new">
           <Button className="bg-emerald-600 hover:bg-emerald-700 shadow-sm">
@@ -46,17 +46,17 @@ export default function QualityInspectionPage() {
         />
       </div>
 
-      <Card className="border-slate-200/80 shadow-sm">
+      <Card className="border-slate-200/80 shadow-sm overflow-hidden">
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-fixed w-full">
             <TableHeader>
-              <TableRow className="border-b border-slate-100">
-                <TableHead className="font-semibold text-slate-600">QI Number</TableHead>
-                <TableHead className="font-semibold text-slate-600">GRN Reference</TableHead>
+              <TableRow className="border-b border-slate-100 bg-slate-50/50">
+                <TableHead className="font-semibold text-slate-600 w-[140px]">QI Number</TableHead>
+                <TableHead className="font-semibold text-slate-600 w-[160px]">GRN Reference</TableHead>
                 <TableHead className="font-semibold text-slate-600">Vendor</TableHead>
-                <TableHead className="font-semibold text-slate-600">Date</TableHead>
-                <TableHead className="font-semibold text-slate-600">Status</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
+                <TableHead className="font-semibold text-slate-600 w-[140px]">Date</TableHead>
+                <TableHead className="font-semibold text-slate-600 w-[120px]">Status</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -64,33 +64,33 @@ export default function QualityInspectionPage() {
                 <TableRow><TableCell colSpan={6} className="text-center py-12 text-slate-400">Loading inspections...</TableCell></TableRow>
               ) : filteredQIs?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
+                  <TableCell colSpan={6} className="text-center py-20">
                     <div className="flex flex-col items-center gap-2">
-                      <ClipboardCheck className="w-10 h-10 text-slate-300" />
+                      <ClipboardCheck className="w-10 h-10 text-slate-200" />
                       <p className="text-slate-400 font-medium">No inspections found</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredQIs?.map((qi) => (
-                  <TableRow key={qi.id} className="hover:bg-slate-50/50 group">
-                    <TableCell className="font-mono font-bold text-emerald-600">{qi.qiNumber}</TableCell>
-                    <TableCell className="font-medium text-slate-700">{qi.grnNumber}</TableCell>
-                    <TableCell className="text-slate-600">{qi.vendorName}</TableCell>
-                    <TableCell className="text-slate-500">
+                  <TableRow key={qi.id} className="hover:bg-slate-50/50 group transition-colors">
+                    <TableCell className="py-4 font-mono font-bold text-emerald-600">{qi.qiNumber}</TableCell>
+                    <TableCell className="font-medium text-slate-700 truncate">{qi.grnNumber}</TableCell>
+                    <TableCell className="text-slate-600 truncate">{qi.vendorName}</TableCell>
+                    <TableCell className="text-slate-500 text-sm">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         {format(new Date(qi.createdAt), 'dd MMM yyyy')}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className="bg-emerald-50 text-emerald-700 border-0">
+                      <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5">
                         {qi.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 h-8">
-                        View
+                      <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 font-bold text-xs">
+                        VIEW
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -100,6 +100,7 @@ export default function QualityInspectionPage() {
           </Table>
         </CardContent>
       </Card>
+
     </div>
   );
 }

@@ -45,6 +45,7 @@ export default function PurchaseOrdersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <h1 className="text-2xl font-bold text-slate-900 font-display">Purchase Orders</h1>
           <p className="text-sm text-slate-500">Track and manage all purchase orders</p>
         </div>
         <Link href="/purchase-orders/new">
@@ -71,18 +72,18 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {/* Table */}
-      <Card className="border-slate-200/80 shadow-sm">
+      <Card className="border-slate-200/80 shadow-sm overflow-hidden">
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-fixed w-full">
             <TableHeader>
-              <TableRow className="border-b border-slate-100">
-                <TableHead className="font-semibold text-slate-600">PO Number</TableHead>
+              <TableRow className="border-b border-slate-100 bg-slate-50/50">
+                <TableHead className="font-semibold text-slate-600 w-[140px]">PO Number</TableHead>
                 <TableHead className="font-semibold text-slate-600">Vendor</TableHead>
-                <TableHead className="font-semibold text-slate-600">Items</TableHead>
-                <TableHead className="font-semibold text-slate-600">Date</TableHead>
-                <TableHead className="font-semibold text-slate-600">Status</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Total</TableHead>
-                <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
+                <TableHead className="font-semibold text-slate-600 w-[100px]">Items</TableHead>
+                <TableHead className="font-semibold text-slate-600 w-[120px]">Date</TableHead>
+                <TableHead className="font-semibold text-slate-600 w-[140px]">Status</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right w-[120px]">Total</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -90,9 +91,9 @@ export default function PurchaseOrdersPage() {
                 <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">Loading purchase orders...</TableCell></TableRow>
               ) : pos?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
+                  <TableCell colSpan={7} className="text-center py-20">
                     <div className="flex flex-col items-center gap-2">
-                      <FileText className="w-10 h-10 text-slate-300" />
+                      <FileText className="w-10 h-10 text-slate-200" />
                       <p className="text-slate-400 font-medium">No purchase orders found</p>
                       <p className="text-slate-300 text-sm">Create your first PO to get started</p>
                     </div>
@@ -103,33 +104,33 @@ export default function PurchaseOrdersPage() {
                   const total = po.items.reduce((sum, item) => sum + item.qty * item.rate, 0);
                   const sc = statusConfig[po.status] || statusConfig.Draft;
                   return (
-                    <TableRow key={po.id} className="hover:bg-slate-50/50 group">
-                      <TableCell>
-                        <span className="font-mono font-semibold text-emerald-600">{po.poNumber}</span>
+                    <TableRow key={po.id} className="hover:bg-slate-50/50 group transition-colors">
+                      <TableCell className="py-4">
+                        <span className="font-mono font-bold text-emerald-600">{po.poNumber}</span>
                       </TableCell>
-                      <TableCell className="font-medium text-slate-900">{po.vendorName}</TableCell>
+                      <TableCell className="font-medium text-slate-900 truncate">{po.vendorName}</TableCell>
                       <TableCell className="text-slate-500">{po.items.length} items</TableCell>
                       <TableCell className="text-slate-500 text-sm">{new Date(po.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
                       <TableCell>
-                        <Badge className={`${sc.bg} ${sc.text} border-0 text-xs font-medium`}>{po.status}</Badge>
+                        <Badge className={`${sc.bg} ${sc.text} border-0 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5`}>{po.status}</Badge>
                       </TableCell>
-                      <TableCell className="text-right font-semibold text-slate-900">
+                      <TableCell className="text-right font-bold text-slate-900">
                         ₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setViewPO(po)}>
-                            <Eye className="w-3.5 h-3.5 text-slate-400" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50" onClick={() => setViewPO(po)}>
+                            <Eye className="w-4 h-4" />
                           </Button>
                           {po.status === 'Draft' && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-8 px-2 text-xs font-bold text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                               onClick={() => handleSubmit(po.id)}
                               disabled={submitPO.isPending}
                             >
-                              {submitPO.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Submit'}
+                              {submitPO.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'SUBMIT'}
                             </Button>
                           )}
                         </div>
@@ -142,6 +143,7 @@ export default function PurchaseOrdersPage() {
           </Table>
         </CardContent>
       </Card>
+
 
       {/* View PO Dialog */}
       <Dialog open={!!viewPO} onOpenChange={() => setViewPO(null)}>
