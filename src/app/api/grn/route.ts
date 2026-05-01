@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import dbConnect from '@/lib/mongoose';
+import GRN from '@/models/GRN';
+import PurchaseOrder from '@/models/PurchaseOrder';
+import Product from '@/models/Product';
+import Series from '@/models/Series';
+import StockMovement from '@/models/StockMovement';
 
 export async function GET(req: NextRequest) {
   try {
-    const grns = await db.gRN.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+    await dbConnect();
+    const grns = await GRN.find().sort({ createdAt: -1 });
 
     const enriched = grns.map((grn) => ({
-      ...grn,
+      ...grn.toObject(),
+      id: grn._id,
       items: JSON.parse(grn.items),
     }));
 
@@ -20,6 +25,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await dbConnect();
     const body = await req.json();
 
     if (!body.poId || !body.items || body.items.length === 0) {
@@ -27,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch PO
-    const po = await db.purchaseOrder.findUnique({ where: { id: body.poId } });
+    const po = await PurchaseOrder.findById(body.poId);
     if (!po) return NextResponse.json({ message: 'PO not found' }, { status: 404 });
     if (po.status === 'Closed') return NextResponse.json({ message: 'PO is already closed' }, { status: 400 });
 
@@ -37,7 +43,7 @@ export async function POST(req: NextRequest) {
     for (const grnItem of body.items) {
       const poLine = poItems.find((i: any) => i.productId === grnItem.productId);
       if (!poLine) throw new Error(`Product ${grnItem.productId} not found in PO`);
-      const pendingQty = poLine.qty - poLine.receivedQty;
+      const pendingQty = poLine.qty - (poLine.receivedQty || 0);
       if (grnItem.acceptedQty > pendingQty) {
         throw new Error(`Cannot accept ${grnItem.acceptedQty} for ${poLine.productName}. Pending: ${pendingQty}`);
       }
@@ -45,8 +51,8 @@ export async function POST(req: NextRequest) {
 
     // Moving Average Cost calculation
     const productIds = body.items.map((i: any) => i.productId);
-    const products = await db.product.findMany({ where: { id: { in: productIds } } });
-    const productMap = new Map(products.map((p) => [p.id, p]));
+    const products = await Product.find({ _id: { $in: productIds } });
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
 
     const incomingValueMap = new Map();
     body.items.forEach((item: any) => {
@@ -69,13 +75,13 @@ export async function POST(req: NextRequest) {
 
     // Generate GRN Number
     const prefix = `GRN-${new Date().getFullYear()}-`;
-    let series = await db.series.findUnique({ where: { name: 'GoodsReceiptNote' } });
+    let series = await Series.findOne({ name: 'GoodsReceiptNote' });
     if (!series) {
-      series = await db.series.create({ data: { name: 'GoodsReceiptNote', prefix, currentNumber: 0 } });
+      series = await Series.create({ name: 'GoodsReceiptNote', prefix, currentNumber: 0 });
     }
     const nextNum = series.currentNumber + 1;
     const grnNumber = `${prefix}${String(nextNum).padStart(5, '0')}`;
-    await db.series.update({ where: { id: series.id }, data: { currentNumber: nextNum, prefix } });
+    await Series.findByIdAndUpdate(series._id, { currentNumber: nextNum, prefix });
 
     // Construct GRN items
     const grnItems = body.items.map((item: any) => {
@@ -89,37 +95,33 @@ export async function POST(req: NextRequest) {
     });
 
     // Create GRN
-    const grn = await db.gRN.create({
-      data: {
-        grnNumber,
-        poId: body.poId,
-        vendorId: po.vendorId,
-        vendorName: po.vendorName,
-        status: 'Posted',
-        items: JSON.stringify(grnItems),
-      },
+    const grn = await GRN.create({
+      grnNumber,
+      poId: body.poId,
+      vendorId: po.vendorId,
+      vendorName: po.vendorName,
+      status: 'Posted',
+      items: JSON.stringify(grnItems),
     });
 
     // Update products (MAC + stock qty)
     for (const [productId, data] of newMACMap) {
-      await db.product.update({
-        where: { id: productId },
-        data: { valuationRate: data.newMAC, stockQty: data.newTotalQty },
+      await Product.findByIdAndUpdate(productId, {
+        valuationRate: data.newMAC,
+        stockQty: data.newTotalQty,
       });
     }
 
     // Create stock movements
     for (const item of body.items) {
       const mac = newMACMap.get(item.productId)?.newMAC || 0;
-      await db.stockMovement.create({
-        data: {
-          productId: item.productId,
-          warehouseId: item.warehouseId || 'WH-MAIN',
-          qty: item.acceptedQty,
-          valuationRate: mac,
-          referenceType: 'GRN',
-          referenceId: grn.id,
-        },
+      await StockMovement.create({
+        productId: item.productId,
+        warehouseId: item.warehouseId || 'WH-MAIN',
+        qty: item.acceptedQty,
+        valuationRate: mac,
+        referenceType: 'GRN',
+        referenceId: grn._id,
       });
     }
 
@@ -134,20 +136,18 @@ export async function POST(req: NextRequest) {
 
     const isFullyReceived = updatedPoItems.every((item: any) => item.receivedQty >= item.qty);
 
-    await db.purchaseOrder.update({
-      where: { id: body.poId },
-      data: {
-        status: isFullyReceived ? 'Closed' : 'Partially Received',
-        items: JSON.stringify(updatedPoItems),
-      },
+    await PurchaseOrder.findByIdAndUpdate(body.poId, {
+      status: isFullyReceived ? 'Closed' : 'Partially Received',
+      items: JSON.stringify(updatedPoItems),
     });
 
     return NextResponse.json({
       message: 'GRN Posted Successfully',
       grnNumber,
-      grn: { ...grn, items: JSON.parse(grn.items) },
+      grn: { ...grn.toObject(), id: grn._id, items: JSON.parse(grn.items) },
     }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
+

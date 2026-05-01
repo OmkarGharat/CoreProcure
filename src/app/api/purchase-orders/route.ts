@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import dbConnect from '@/lib/mongoose';
+import PurchaseOrder from '@/models/PurchaseOrder';
+import Vendor from '@/models/Vendor';
+import Product from '@/models/Product';
+import Series from '@/models/Series';
 
 export async function GET(req: NextRequest) {
   try {
+    await dbConnect();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
 
-    const where: any = {};
-    if (status) where.status = status;
+    const query: any = {};
+    if (status) query.status = status;
 
-    const pos = await db.purchaseOrder.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const pos = await PurchaseOrder.find(query).sort({ createdAt: -1 });
 
     const enriched = pos.map((po) => ({
-      ...po,
+      ...po.toObject(),
+      id: po._id,
       items: JSON.parse(po.items),
     }));
 
@@ -27,6 +30,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await dbConnect();
     const body = await req.json();
 
     if (!body.vendorId || !body.items || body.items.length === 0) {
@@ -34,21 +38,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch vendor
-    const vendor = await db.vendor.findUnique({ where: { id: body.vendorId } });
+    const vendor = await Vendor.findById(body.vendorId);
     if (!vendor) {
       return NextResponse.json({ message: 'Vendor not found' }, { status: 404 });
     }
 
     // Fetch products
     const productIds = body.items.map((i: any) => i.productId);
-    const products = await db.product.findMany({ where: { id: { in: productIds } } });
-    const productMap = new Map(products.map((p) => [p.id, p]));
+    const products = await Product.find({ _id: { $in: productIds } });
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
 
     const enrichedItems = body.items.map((item: any) => {
       const product = productMap.get(item.productId);
       if (!product) throw new Error(`Product ${item.productId} not found`);
       return {
-        productId: product.id,
+        productId: product._id,
         productName: product.description || product.itemCode,
         uom: product.uom,
         qty: item.qty,
@@ -59,27 +63,26 @@ export async function POST(req: NextRequest) {
 
     // Generate PO number
     const prefix = `PO-${new Date().getFullYear()}-`;
-    let series = await db.series.findUnique({ where: { name: 'PurchaseOrder' } });
+    let series = await Series.findOne({ name: 'PurchaseOrder' });
     if (!series) {
-      series = await db.series.create({ data: { name: 'PurchaseOrder', prefix, currentNumber: 0 } });
+      series = await Series.create({ name: 'PurchaseOrder', prefix, currentNumber: 0 });
     }
     const nextNum = series.currentNumber + 1;
     const poNumber = `${prefix}${String(nextNum).padStart(5, '0')}`;
 
-    await db.series.update({ where: { id: series.id }, data: { currentNumber: nextNum, prefix } });
+    await Series.findByIdAndUpdate(series._id, { currentNumber: nextNum, prefix });
 
-    const po = await db.purchaseOrder.create({
-      data: {
-        poNumber,
-        vendorId: body.vendorId,
-        vendorName: vendor.name,
-        status: 'Draft',
-        items: JSON.stringify(enrichedItems),
-      },
+    const po = await PurchaseOrder.create({
+      poNumber,
+      vendorId: body.vendorId,
+      vendorName: vendor.name,
+      status: 'Draft',
+      items: JSON.stringify(enrichedItems),
     });
 
-    return NextResponse.json({ ...po, items: JSON.parse(po.items) }, { status: 201 });
+    return NextResponse.json({ ...po.toObject(), id: po._id, items: JSON.parse(po.items) }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
+

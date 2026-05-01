@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import dbConnect from '@/lib/mongoose';
+import Vendor from '@/models/Vendor';
+import Product from '@/models/Product';
+import PurchaseOrder from '@/models/PurchaseOrder';
+import GRN from '@/models/GRN';
 
 export async function GET() {
   try {
+    await dbConnect();
     const [totalVendors, totalProducts, totalPOs, totalGRNs, pos] = await Promise.all([
-      db.vendor.count({ where: { isActive: true } }),
-      db.product.count({ where: { isActive: true } }),
-      db.purchaseOrder.count(),
-      db.gRN.count(),
-      db.purchaseOrder.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
+      Vendor.countDocuments({ isActive: true }),
+      Product.countDocuments({ isActive: true }),
+      PurchaseOrder.countDocuments(),
+      GRN.countDocuments(),
+      PurchaseOrder.find().sort({ createdAt: -1 }).limit(50),
     ]);
 
     const pendingPOs = pos.filter((po) => po.status === 'Draft' || po.status === 'Submitted').length;
@@ -20,21 +25,20 @@ export async function GET() {
       const items = JSON.parse(po.items);
       const total = items.reduce((sum: number, item: any) => sum + item.qty * item.rate, 0);
       totalPOValue += total;
-      return { ...po, items, total };
+      return { ...po.toObject(), items, total };
     });
 
     // Stock value
-    const products = await db.product.findMany({ where: { isActive: true } });
+    const products = await Product.find({ isActive: true });
     const totalStockValue = products.reduce((sum, p) => sum + (p.stockQty * p.valuationRate), 0);
 
     // Recent GRNs
-    const recentGRNs = await db.gRN.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
+    const recentGRNs = await GRN.find()
+      .sort({ createdAt: -1 })
+      .limit(5);
 
     const enrichedGRNs = recentGRNs.map((grn) => ({
-      ...grn,
+      ...grn.toObject(),
       items: JSON.parse(grn.items),
     }));
 
@@ -56,3 +60,4 @@ export async function GET() {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
+
